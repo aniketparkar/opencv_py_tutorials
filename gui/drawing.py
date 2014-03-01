@@ -1,4 +1,7 @@
-import random
+from random import (
+    choice,
+    randint,
+)
 
 from collections import deque
 from time import sleep
@@ -7,8 +10,8 @@ import numpy as np
 import cv2
 
 
-img_height = 600
-img_width = 600
+img_height = 800
+img_width = 800
 
 # the 3 is for BGR?
 img = np.zeros((img_width, img_height, 3), dtype=np.uint8)
@@ -101,7 +104,7 @@ class Worm(object):
                  cell_size, color, stringy=4):
         self.image = image
         self.x, self.y = start
-        self.cells = [start]
+        self.cells = []
         self.length = length
         self.cell_size = cell_size
         self.color = color
@@ -123,12 +126,16 @@ class Worm(object):
         return True
 
     def random_next(self):
-        x = self.cells[0][0]
-        y = self.cells[0][1]
+        if len(self.cells) > 0:
+            x = self.cells[0][0]
+            y = self.cells[0][1]
+        else:
+            x = self.x
+            y = self.y
 
         new_point = [x, y]
-        position = random.randint(0, 1)
-        change = self.cell_size * random.choice([-1, 1])
+        position = randint(0, 1)
+        change = self.cell_size * choice([-1, 1])
         new_point[position] += change
         if self.valid(new_point):
             self.last_change = (position, change)
@@ -140,7 +147,7 @@ class Worm(object):
         """Move either up or down."""
 
         # prefer previous choice
-        if self.last_change is not None and random.randint(0, self.stringy) != 0:
+        if len(self.cells) > 0 and self.last_change is not None and randint(0, self.stringy) != 0:
             new_point = [self.cells[0][0], self.cells[0][1]]
             new_point[self.last_change[0]] += self.last_change[1]
             if self.valid(new_point):
@@ -177,30 +184,91 @@ class Worm(object):
             self.add_cell()
             return
         
+        if len(self.cells) == 0:
+            return
+
         self.move()
+
+    def change_length(self, new_length):
+        cur_len = len(self.cells)
+        if new_length > cur_len:
+            for _ in range(new_length - cur_len):
+                self.add_cell()
+        elif new_length < self.length:
+            for _ in range(cur_len - new_length):
+                cell = self.cells.pop(-1)
+                self.draw_cell(cell, color=(0, 0, 0))
+                if len(self.cells) == 0:
+                    self.x, self.y = cell
+        self.length = length
+
+    def erase(self):
+        for cell in self.cells:
+            self.draw_cell(cell, color=(0, 0, 0))
 
 
 
 cv2.imshow('image', img)
 
-worms = [
-    Worm(img,
-        (300, 300), 200, 5, (
-            random.randint(0, 256),
-            random.randint(0, 256),
-            random.randint(0, 256),
-        ),
-        stringy=20
-    )
-    for x in range(1)
-]
+def adjust_worm_count(worm_list, count, length, stringy):
+    if len(worm_list) < count:
+        for _ in range(count - len(worm_list)):
+            worm = Worm(img,
+                        (randint(0, img_width), randint(0,img_height)),
+                        length, 5, (
+                            randint(0, 256),
+                            randint(0, 256),
+                            randint(0, 256),
+                        ),
+                    stringy=stringy
+            )
+            worm_list.append(worm)
+            worm.update()
+    elif len(worm_list) > count:
+        for i in range(len(worm_list) - count):
+            worm = worm_list.pop()
+            worm.erase()
 
 
+def adjust_worm_length(worm_list, length):
+    for worm in worm_list:
+        worm.change_length(length)
+
+def adjust_worm_stringy(worm_list, stringy):
+    for worm in worm_list:
+        worm.stringy = stringy
+
+
+def nothing(x):
+    pass
+
+cv2.createTrackbar('count', 'image', 0, 200, nothing)
+cv2.createTrackbar('length', 'image', 0, 200, nothing)
+cv2.createTrackbar('stringy', 'image', 0, 1000, nothing)
+
+worms = []
+old_length = 0
+old_stringy = 0
 while True:
+    count = cv2.getTrackbarPos('count', 'image')
+    length = cv2.getTrackbarPos('length', 'image')
+    stringy = cv2.getTrackbarPos('stringy', 'image')
+
+    adjust_worm_count(worms, count, length, stringy)
+
+    if old_length != length:
+        adjust_worm_length(worms, length)
+        old_length = length
+
+    if old_stringy != stringy:
+        adjust_worm_stringy(worms, stringy)
+        old_stringy = stringy
+
     for worm in worms:
         worm.update()
 
     cv2.imshow('image', img)
     cv2.waitKey(1)
+    sleep(0.25)
 
 cv2.destroyAllWindows()
