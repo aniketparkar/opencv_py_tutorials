@@ -10,11 +10,16 @@ import numpy as np
 import cv2
 
 
-img_height = 800
-img_width = 800
 
 # the 3 is for BGR?
-img = np.zeros((img_width, img_height, 3), dtype=np.uint8)
+#img = cv2.imread('domo_kun.jpg')
+
+cap = cv2.VideoCapture(0)
+
+ret, img = cap.read()
+
+image_width = len(img[0])
+image_height = len(img)
 
 def draw_line():
     point_1 = (0, 0)
@@ -38,7 +43,7 @@ def draw_rectangle():
     cv2.rectangle(img, point_1, point_2, color, thickness)
 
 
-def draw_circle(center):
+def bdraw_circle(center):
     radius = 63
     blue = 0
     green = 0
@@ -97,7 +102,10 @@ draw_polygon()
 x_0 = 449
 y_0 = 63
 
-draw_circle((x_0, y_0))
+bdraw_circle((x_0, y_0))
+
+X = 0
+Y = 1
 
 class Worm(object):
     def __init__(self, image, start, length,
@@ -110,7 +118,7 @@ class Worm(object):
         self.color = color
         self.stringy = stringy
 
-        self.x_max = len(image) - cell_size
+        self.x_max = len(image[0]) - cell_size
         self.y_max = len(image) - cell_size
 
         self.last_change = None
@@ -127,8 +135,8 @@ class Worm(object):
 
     def random_next(self):
         if len(self.cells) > 0:
-            x = self.cells[0][0]
-            y = self.cells[0][1]
+            x = self.cells[0][X]
+            y = self.cells[0][Y]
         else:
             x = self.x
             y = self.y
@@ -148,7 +156,7 @@ class Worm(object):
 
         # prefer previous choice
         if len(self.cells) > 0 and self.last_change is not None and randint(0, self.stringy) != 0:
-            new_point = [self.cells[0][0], self.cells[0][1]]
+            new_point = [self.cells[0][X], self.cells[0][Y]]
             new_point[self.last_change[0]] += self.last_change[1]
             if self.valid(new_point):
                 return tuple(new_point)
@@ -166,28 +174,29 @@ class Worm(object):
         new = self.next_cell()
         self.cells.insert(0, new)
         old = self.cells.pop(-1)
-        self.draw_cell(new, self.color)
-        if old not in self.cells: # don't erase the body
+        if not old in self.cells:
             self.draw_cell(old, color=(0, 0, 0))
+        self.draw_cell(new)
 
     def draw_cell(self, cell, color=None):
         """Draw a cell."""
         if color is None:
             color is self.color
 
-        point_1 = (cell[0], cell[1])
-        point_2 = (cell[0] + self.cell_size, cell[1] + self.cell_size)
+        point_1 = (cell[X], cell[Y])
+        point_2 = (cell[X] + self.cell_size, cell[Y] + self.cell_size)
         cv2.rectangle(self.image, point_1, point_2, color, -1)
 
     def update(self):
         if len(self.cells) < self.length:
             self.add_cell()
+        elif len(self.cells) == 0:
             return
         
-        if len(self.cells) == 0:
-            return
-
         self.move()
+        
+        for cell in self.cells:
+            self.draw_cell(cell, self.color)
 
     def change_length(self, new_length):
         cur_len = len(self.cells)
@@ -214,7 +223,7 @@ def adjust_worm_count(worm_list, count, length, stringy):
     if len(worm_list) < count:
         for _ in range(count - len(worm_list)):
             worm = Worm(img,
-                        (randint(0, img_width), randint(0,img_height)),
+                        (randint(0, image_width), randint(0,image_height)),
                         length, 5, (
                             randint(0, 256),
                             randint(0, 256),
@@ -242,14 +251,49 @@ def adjust_worm_stringy(worm_list, stringy):
 def nothing(x):
     pass
 
-cv2.createTrackbar('count', 'image', 0, 200, nothing)
-cv2.createTrackbar('length', 'image', 0, 200, nothing)
+cv2.createTrackbar('count', 'image', 0, 1000, nothing)
+cv2.createTrackbar('length', 'image', 0, 2000, nothing)
 cv2.createTrackbar('stringy', 'image', 0, 1000, nothing)
 
 worms = []
 old_length = 0
 old_stringy = 0
+
+
+
+drawing = False # true if mouse is pressed
+mode = True # if True, draw rectangle. Press 'm' to toggle to curve.
+
+def paint(x, y):
+    global ix, iy
+    if mode == True:
+        cv2.rectangle(img, (ix, iy), (x, y), (0, 255, 0), -1)
+    else:
+        cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+
+# mouse callback function
+def draw_circle(event, x, y, flags, param):
+        global ix, iy, drawing, mode
+
+        if event == cv2.EVENT_LBUTTONDOWN:
+            drawing = True
+            ix,iy = x,y
+        elif event == cv2.EVENT_MOUSEMOVE:
+            if drawing == True:
+                paint(x, y)
+        elif event == cv2.EVENT_LBUTTONUP:
+            drawing = False
+            paint(x, y)
+
+
+cv2.setMouseCallback('image', draw_circle)
+
+cap_mode = True
+
 while True:
+    if cap_mode:
+        ret, img = cap.read()
+
     count = cv2.getTrackbarPos('count', 'image')
     length = cv2.getTrackbarPos('length', 'image')
     stringy = cv2.getTrackbarPos('stringy', 'image')
@@ -268,7 +312,16 @@ while True:
         worm.update()
 
     cv2.imshow('image', img)
-    cv2.waitKey(1)
-    sleep(0.25)
+    k = cv2.waitKey(1) & 0xFF
+    if k == ord('m'):
+        mode = not mode
+    if k == ord('r'):
+        img[:,:,:] = cv2.imread('domo_kun.jpg')
+    if k == ord('p'):
+        cap_mode = not cap_mode
+        if cap_mode == True:
+            old_length = 0
+            adjust_worm_count(worms, count, length, stringy)
+            cv2.setTrackbarPos('count', 'image', 0)
 
 cv2.destroyAllWindows()
