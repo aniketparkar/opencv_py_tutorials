@@ -17,6 +17,7 @@ import cv2
 cap = cv2.VideoCapture(0)
 
 ret, img = cap.read()
+worm_image = np.zeros(img.shape, img.dtype)
 
 image_width = len(img[0])
 image_height = len(img)
@@ -222,7 +223,7 @@ cv2.imshow('image', img)
 def adjust_worm_count(worm_list, count, length, stringy):
     if len(worm_list) < count:
         for _ in range(count - len(worm_list)):
-            worm = Worm(img,
+            worm = Worm(worm_image,
                         (randint(0, image_width), randint(0,image_height)),
                         length, 5, (
                             randint(0, 256),
@@ -267,9 +268,9 @@ mode = True # if True, draw rectangle. Press 'm' to toggle to curve.
 def paint(x, y):
     global ix, iy
     if mode == True:
-        cv2.rectangle(img, (ix, iy), (x, y), (0, 255, 0), -1)
+        cv2.rectangle(worm_image, (ix, iy), (x, y), (0, 255, 0), -1)
     else:
-        cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+        cv2.circle(worm_image, (x, y), 5, (0, 0, 255), -1)
 
 # mouse callback function
 def draw_circle(event, x, y, flags, param):
@@ -289,6 +290,23 @@ def draw_circle(event, x, y, flags, param):
 cv2.setMouseCallback('image', draw_circle)
 
 cap_mode = True
+
+def masked_add(bg_img, fg_img):
+    # create mask and inverse mask of fg
+    fg_gray = cv2.cvtColor(fg_img, cv2.COLOR_BGR2GRAY)
+    ret, mask = cv2.threshold(fg_gray, 10, 255, cv2.THRESH_BINARY)
+    mask_inv = cv2.bitwise_not(mask)
+
+    # black out the area of fg in bg
+    bg = cv2.bitwise_and(bg_img, bg_img, mask=mask_inv)
+
+    fg = cv2.bitwise_and(fg_img, fg_img, mask=mask)
+
+    final = cv2.addWeighted(bg_img, 0.3, fg, 0.7, 0)
+
+    final = cv2.add(bg, fg)
+    return final
+
 
 while True:
     if cap_mode:
@@ -311,7 +329,9 @@ while True:
     for worm in worms:
         worm.update()
 
-    cv2.imshow('image', img)
+    final_img = masked_add(img, worm_image)
+
+    cv2.imshow('image', final_img)
     k = cv2.waitKey(1) & 0xFF
     if k == ord('m'):
         mode = not mode
@@ -319,9 +339,5 @@ while True:
         img[:,:,:] = cv2.imread('domo_kun.jpg')
     if k == ord('p'):
         cap_mode = not cap_mode
-        if cap_mode == True:
-            old_length = 0
-            adjust_worm_count(worms, count, length, stringy)
-            cv2.setTrackbarPos('count', 'image', 0)
 
 cv2.destroyAllWindows()
