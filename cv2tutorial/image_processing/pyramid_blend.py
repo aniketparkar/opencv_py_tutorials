@@ -3,15 +3,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from cv2tutorial.util import fetch_image
+from cv2tutorial.displayer import Displayer
 
-images = []
-titles = []
-
-def add_img(image, title):
-    global images, titles
-    images.append(image)
-    titles.append(title)
-
+displayer = Displayer()
 
 A = cv2.cvtColor(fetch_image('apple.jpg'), cv2.COLOR_BGR2RGB)
 B = cv2.cvtColor(fetch_image('orange.jpg'), cv2.COLOR_BGR2RGB)
@@ -55,22 +49,16 @@ for la,lb in zip(lpA,lpB):
 ls_ = LS[0]
 for i in xrange(1,6):
     ls_ = cv2.pyrUp(ls_)
-    add_img(ls_, i)
+    displayer.add_image(ls_, i)
     ls_ = cv2.add(ls_, LS[i])
 
 # image with direct connecting each half
 real = np.hstack((A[:,:cols/2],B[:,cols/2:]))
 
-add_img(ls_, "pyramid")
-#add_img(real, "stacked")
+displayer.add_image(ls_, "pyramid")
+#displayer.add_image(real, "stacked")
 
 #for i in range(len(lpA)):
-#    add_img(LS[i], i)
+#    displayer.add_image(LS[i], i)
 
-
-for i in range(len(images)):
-    plt.subplot(1, len(images), i)
-    plt.imshow(images[i])
-    plt.title(titles[i])
-
-plt.show()
+displayer.display()
