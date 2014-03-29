@@ -1,4 +1,4 @@
-fom matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 
 class Displayer(object):
     """"Display a group of images."""
