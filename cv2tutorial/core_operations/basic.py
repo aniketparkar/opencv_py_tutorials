@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 
-img = cv2.imread('messi5.jpg')
+from cv2tutorial.util import fetch_image
+
+img = fetch_image('messi5.jpg')
 cv2.namedWindow('img')
 
 pixel = img[100, 200]

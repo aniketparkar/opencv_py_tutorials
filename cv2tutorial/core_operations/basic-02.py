@@ -2,9 +2,11 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
+from cv2tutorial.util import fetch_image
+
 BLUE = [255,0,0]
 
-img1 = cv2.imread('jason_small.png')
+img1 = fetch_image('jason_small.png')
 
 img1[:,:,0], img1[:,:,2] = img1[:,:,2], img1[:,:,0]
 

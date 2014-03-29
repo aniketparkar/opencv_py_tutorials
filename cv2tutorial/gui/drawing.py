@@ -9,10 +9,7 @@ from time import sleep
 import numpy as np
 import cv2
 
-
-
-# the 3 is for BGR?
-#img = cv2.imread('domo_kun.jpg')
+from cv2tutorial.util import fetch_image
 
 cap = cv2.VideoCapture(0)
 
@@ -336,7 +333,7 @@ while True:
     if k == ord('m'):
         mode = not mode
     if k == ord('r'):
-        img[:,:,:] = cv2.imread('domo_kun.jpg')
+        img[:,:,:] = fetch_image('domo_kun.jpg')
     if k == ord('p'):
         cap_mode = not cap_mode
 
